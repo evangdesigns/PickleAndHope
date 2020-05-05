@@ -8,7 +8,7 @@ using Microsoft.Data.SqlClient;
 namespace PickleAndHope.DataAccess
 {
     public class PickleRepository
-    { 
+    {
 
         static List<Pickle> _pickles = new List<Pickle>
         {
@@ -23,10 +23,36 @@ namespace PickleAndHope.DataAccess
         //Connection String (connectionstring.com)
         const string ConnectionString = "Server=localhost;Database=PickleAndHope;Trusted_Connection=True;";
 
-        public void Add(Pickle pickle)
+        public Pickle Add(Pickle pickle)
         {
-            pickle.Id = _pickles.Max(x => x.Id) + 1;
-            _pickles.Add(pickle);
+            //pickle.Id = _pickles.Max(x => x.Id) + 1;
+            //_pickles.Add(pickle);
+
+            var sql = @"insert into Pickle(NumberInStock, Price, Size, Type)
+                        output inserted.*
+                        values(@NumberInStock,@Price,@Size,@Type)";
+
+            using (var connection = new SqlConnection(ConnectionString))
+            {
+                connection.Open();
+
+                var cmd = connection.CreateCommand();
+                cmd.CommandText = sql;
+
+                cmd.Parameters.AddWithValue("NumberInStock", pickle.NumberInStock);
+                cmd.Parameters.AddWithValue("Price", pickle.Price);
+                cmd.Parameters.AddWithValue("Size", pickle.Size);
+                cmd.Parameters.AddWithValue("Type", pickle.Type);
+
+                var reader = cmd.ExecuteReader();
+
+                if (reader.Read())
+                {
+                    var newPickle = MapReaderToPickle(reader);
+                    return newPickle;
+                }
+                return null;
+            }
         }
 
         public void Remove(string type)
@@ -36,11 +62,35 @@ namespace PickleAndHope.DataAccess
 
         public Pickle Update(Pickle pickle)
         {
-            var pickleToupdate = GetByType(pickle.Type);
+            //var pickleToupdate = GetByType(pickle.Type);
 
-            pickleToupdate.NumberInStock += pickle.NumberInStock;
+            //pickleToupdate.NumberInStock += pickle.NumberInStock;
 
-            return pickleToupdate;
+            //return pickleToupdate;
+
+            var sql = @"update Pickle
+                        set NumberInStock = NumberInStock + @NewStock
+                        where Id = @Id";
+
+            using (var connection = new SqlConnection(ConnectionString))
+            {
+                connection.Open();
+
+                var cmd = connection.CreateCommand();
+                cmd.CommandText = sql;
+
+                cmd.Parameters.AddWithValue("NewStock", pickle.NumberInStock);
+                cmd.Parameters.AddWithValue("Id", pickle.Id);
+
+                var reader = cmd.ExecuteReader();
+
+                if (reader.Read())
+                {
+                    var newPickle = MapReaderToPickle(reader);
+                    return newPickle;
+                }
+                return null;
+            }
         }
 
         public Pickle GetByType(string typeOfPickle)
@@ -146,7 +196,7 @@ namespace PickleAndHope.DataAccess
                 Price = (decimal)reader["Price"],
                 NumberInStock = (int)reader["NumberInStock"],
                 Size = (string)reader["Size"],
-            }; ;
+            };
             return pickle;
         }
     }
